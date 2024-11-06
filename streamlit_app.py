@@ -1,225 +1,125 @@
 import streamlit as st
-import PyPDF2
-from gtts import gTTS
-from PyPDF2 import PdfReader, PdfWriter
-from reportlab.pdfgen import canvas
-from io import BytesIO
+import pdfplumber
+import pdfkit
+from markdown import markdown
+from docx import Document
+from moviepy.editor import VideoFileClip
+from moviepy.video.fx.all import resize as video_resize
+import pandas as pd
 from PIL import Image
-import os
-import glob
+import io
+import qrcode
+import random
+import string
+from gtts import gTTS
+from pydub import AudioSegment
+import os  # Import the os module
 
-# Function to extract text from PDF
-def extract_text_from_pdf(file):
-    reader = PdfReader(file)
-    text = ""
-    for page in reader.pages:
-        text += page.extract_text() + "\n"
-    return text
+# Utility Functions
 
-# Function to save text as audio
-def save_text_as_audio(text, filename):
-    tts = gTTS(text=text, lang='en')
-    tts.save(filename)
+def generate_random_password(length=12):
+    characters = string.ascii_letters + string.digits + string.punctuation
+    return ''.join(random.choice(characters) for _ in range(length))
 
-# Function to split PDF into individual pages
-def split_pdf(file):
-    reader = PdfReader(file)
-    writer = PdfWriter()
-    page_files = []
+def create_qr_code(data):
+    qr = qrcode.make(data)
+    buffer = io.BytesIO()
+    qr.save(buffer, format="PNG")
+    buffer.seek(0)
+    return buffer
 
-    for i in range(len(reader.pages)):
-        writer.add_page(reader.pages[i])
-        output_filename = f"page_{i + 1}.pdf"
-        with open(output_filename, "wb") as output_file:
-            writer.write(output_file)
-        page_files.append(output_filename)
+def visualize_data(df):
+    st.line_chart(df)
 
-    return page_files
+# Streamlit App Layout
+st.title("Enhanced File Type Converters & Media Processing")
 
-# Function to merge PDFs
-def merge_pdfs(file_list):
-    writer = PdfWriter()
-    for pdf_file in file_list:
-        reader = PdfReader(pdf_file)
-        for page in reader.pages:
-            writer.add_page(page)
-    output_filename = "merged.pdf"
-    with open(output_filename, "wb") as output_file:
-        writer.write(output_file)
-    return output_filename
+# File Type Conversion Section
+st.header("File Type Converters")
 
-# Function to create watermark page
-def create_watermark_page(text):
-    packet = BytesIO()
-    can = canvas.Canvas(packet)
-    can.setFont("Helvetica", 30)
-    can.setFillColorRGB(0.5, 0.5, 0.5)
-    can.drawString(200, 400, text)
-    can.save()
-    packet.seek(0)
-    return PdfReader(packet)
+# PDF to Word Converter
+pdf_file = st.file_uploader("Upload PDF Document for PDF to Word Conversion", type="pdf")
+if pdf_file:
+    if st.button("Convert PDF to Word"):
+        with pdfplumber.open(pdf_file) as pdf:
+            doc = Document()
+            for page in pdf.pages:
+                doc.add_paragraph(page.extract_text())
+            word_file = io.BytesIO()
+            doc.save(word_file)
+            word_file.seek(0)
+            st.download_button("Download Word Document", word_file, file_name="converted_document.docx")
 
-# Function to add watermark
-def add_watermark(pdf_file, watermark_text):
-    output_pdf = PdfWriter()
-    reader = PdfReader(pdf_file)
+# HTML to PDF Converter
+html_content = st.text_area("Enter HTML Content for Conversion to PDF")
+if st.button("Convert HTML to PDF"):
+    pdf_file = "converted_html.pdf"
+    pdfkit.from_string(html_content, pdf_file)
+    with open(pdf_file, "rb") as file:
+        st.download_button("Download PDF", file, file_name="converted_html.pdf")
 
-    for page in reader.pages:
-        page.merge_page(create_watermark_page(watermark_text))
-        output_pdf.add_page(page)
+# Markdown to HTML Converter
+markdown_content = st.text_area("Enter Markdown Content for Conversion to HTML")
+if st.button("Convert Markdown to HTML"):
+    html_output = markdown(markdown_content)
+    st.write("### HTML Output")
+    st.code(html_output, language="html")
 
-    output_filename = "watermarked.pdf"
-    with open(output_filename, "wb") as output_file:
-        output_pdf.write(output_file)
+# Image Format Conversion (Improved Bytes-like object handling)
+uploaded_image = st.file_uploader("Upload Image (JPG/PNG) for Format Conversion", type=["jpg", "jpeg", "png"])
+if uploaded_image:
+    img = Image.open(uploaded_image)
+    format_choice = st.selectbox("Convert to Format", options=["PNG", "JPEG"])
+    output_buffer = io.BytesIO()
+    if st.button("Convert Image Format"):
+        img.save(output_buffer, format=format_choice)
+        output_buffer.seek(0)
+        st.image(output_buffer, caption=f"Converted Image in {format_choice} format", use_column_width=True)
 
-    return output_filename
+# Media Processing Section
+st.header("Media Processing Features")
 
-# Function to download raw text
-def download_raw_text(text):
-    with open("extracted_text.txt", "w") as f:
-        f.write(text)
+# Video Resizer
+uploaded_video = st.file_uploader("Upload Video File for Resizing", type=["mp4", "avi"])
+if uploaded_video:
+    video_clip = VideoFileClip(uploaded_video.name)
+    scale_factor = st.slider("Select Resize Scale Factor", min_value=0.1, max_value=1.0, value=0.5)
+    if st.button("Resize Video"):
+        resized_clip = video_clip.fx(video_resize, scale_factor)
+        resized_video_buffer = io.BytesIO()
+        resized_clip.write_videofile(resized_video_buffer)
+        resized_video_buffer.seek(0)
+        st.video(resized_video_buffer, format="video/mp4")
 
-# Function to add page numbers
-def add_page_numbers(pdf_file):
-    reader = PdfReader(pdf_file)
-    writer = PdfWriter()
+# QR Code Generator
+qr_data = st.text_input("Enter data for QR Code")
+if st.button("Generate QR Code"):
+    qr_image = create_qr_code(qr_data)
+    st.image(qr_image, caption="QR Code")
+    st.download_button("Download QR Code", qr_image, file_name="qrcode.png")
 
-    for i, page in enumerate(reader.pages):
-        page.merge_page(create_watermark_page(f"Page {i + 1}"))
-        writer.add_page(page)
+# Random Password Generator
+if st.button("Generate Random Password"):
+    password = generate_random_password()
+    st.write(f"Generated Password: {password}")
 
-    output_filename = "numbered.pdf"
-    with open(output_filename, "wb") as output_file:
-        writer.write(output_file)
+# Data Visualization
+data_file = st.file_uploader("Upload CSV for Visualization", type="csv")
+if data_file:
+    df = pd.read_csv(data_file)
+    visualize_data(df)
 
-    return output_filename
+# Speech Conversion (Text-to-Speech)
+text_to_speech_input = st.text_area("Enter Text for Text-to-Speech Conversion")
+if st.button("Convert Text to Speech"):
+    tts = gTTS(text=text_to_speech_input, lang='en')
+    audio_buffer = io.BytesIO()
+    tts.save(audio_buffer)
+    audio_buffer.seek(0)
+    st.audio(audio_buffer, format="audio/mp3")
 
-# Function to insert an image into the PDF
-def insert_image_to_pdf(pdf_file, image_file):
-    reader = PdfReader(pdf_file)
-    writer = PdfWriter()
-    image = Image.open(image_file)
-
-    for page in reader.pages:
-        page.merge_page(create_image_page(image))
-        writer.add_page(page)
-
-    output_filename = "image_inserted.pdf"
-    with open(output_filename, "wb") as output_file:
-        writer.write(output_file)
-
-    return output_filename
-
-# Function to create a page with an image
-def create_image_page(image):
-    packet = BytesIO()
-    can = canvas.Canvas(packet)
-    can.drawImage(image, 100, 100)  # Adjust the position and size
-    can.save()
-    packet.seek(0)
-    return PdfReader(packet)
-
-# Function to convert PDF to text
-def pdf_to_text(pdf_file):
-    return extract_text_from_pdf(pdf_file)
-
-# Function to compress PDF (placeholder)
-def compress_pdf(pdf_file):
-    # Compression logic would go here
-    return "compressed.pdf"
-
-# Function to create interactive forms (placeholder)
-def create_interactive_form(pdf_file):
-    # Form creation logic would go here
-    return "form_created.pdf"
-
-# Function for OCR (placeholder)
-def perform_ocr(pdf_file):
-    # OCR logic would go here
-    return "ocr_output.pdf"
-
-# Streamlit app
-st.title("Mind-Blasting PDF Tool")
-
-uploaded_file = st.file_uploader("Upload your PDF", type=["pdf"])
-
-if uploaded_file is not None:
-    # Extract text
-    text = extract_text_from_pdf(uploaded_file)
-    
-    # Display extracted text
-    st.subheader("Extracted Text")
-    st.write(text)
-    
-    # Summarize (simple version)
-    st.subheader("Summary")
-    st.write(text[:500] + "...")
-
-    # Convert text to audio
-    audio_filename = "output.mp3"
-    if st.button("Convert Text to Podcast"):
-        save_text_as_audio(text, audio_filename)
-        st.success(f"Podcast saved as {audio_filename}")
-
-    # Download link for audio
-    st.download_button(
-        label="Download Podcast",
-        data=open(audio_filename, "rb").read(),
-        file_name=audio_filename,
-        mime="audio/mp3"
-    )
-
-    # Download raw text
-    if st.button("Download Raw Text"):
-        download_raw_text(text)
-        st.success("Raw text downloaded as extracted_text.txt")
-
-    # Split PDF
-    if st.button("Split PDF into Individual Pages"):
-        split_files = split_pdf(uploaded_file)
-        st.success("PDF split into individual pages.")
-        for file in split_files:
-            st.download_button(label=f"Download {file}", data=open(file, "rb").read(), file_name=file)
-
-    # Watermark feature
-    watermark_text = st.text_input("Enter watermark text:")
-    if st.button("Add Watermark"):
-        if watermark_text:
-            watermarked_pdf = add_watermark(uploaded_file, watermark_text)
-            st.success("Watermark added.")
-            st.download_button(label="Download Watermarked PDF", data=open(watermarked_pdf, "rb").read(), file_name=watermarked_pdf)
-
-    # Add page numbering
-    if st.button("Add Page Numbers"):
-        numbered_pdf = add_page_numbers(uploaded_file)
-        st.success("Page numbers added.")
-        st.download_button(label="Download Numbered PDF", data=open(numbered_pdf, "rb").read(), file_name=numbered_pdf)
-
-    # Placeholder for image insertion
-    image_file = st.file_uploader("Upload an image to insert into PDF", type=["jpg", "png"])
-    if st.button("Insert Image into PDF"):
-        if image_file:
-            inserted_image_pdf = insert_image_to_pdf(uploaded_file, image_file)
-            st.success("Image inserted.")
-            st.download_button(label="Download PDF with Image", data=open(inserted_image_pdf, "rb").read(), file_name=inserted_image_pdf)
-
-    # Implementing the new features
-    if st.button("Compress PDF"):
-        compressed_pdf = compress_pdf(uploaded_file)
-        st.success("PDF compressed.")
-        st.download_button(label="Download Compressed PDF", data=open(compressed_pdf, "rb").read(), file_name=compressed_pdf)
-
-    if st.button("Create Interactive Form"):
-        form_pdf = create_interactive_form(uploaded_file)
-        st.success("Interactive form created.")
-        st.download_button(label="Download Interactive Form PDF", data=open(form_pdf, "rb").read(), file_name=form_pdf)
-
-    if st.button("Perform OCR"):
-        ocr_pdf = perform_ocr(uploaded_file)
-        st.success("OCR performed.")
-        st.download_button(label="Download OCR PDF", data=open(ocr_pdf, "rb").read(), file_name=ocr_pdf)
-
-    # Clean up files
-    for file in glob.glob("*.pdf"):
-        if "watermarked" not in file and "numbered" not in file and "inserted" not in file:
-            os.remove(file)
+# Clean up temporary files
+temp_files = ["converted_html.pdf", "resized_video.mp4"]
+for temp_file in temp_files:
+    if os.path.exists(temp_file):
+        os.remove(temp_file)
