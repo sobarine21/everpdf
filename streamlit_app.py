@@ -1,116 +1,200 @@
 import streamlit as st
-import pdfplumber
-import pdfkit
-from markdown import markdown
-from docx import Document
-from moviepy.editor import VideoFileClip
-from moviepy.video.fx.all import resize as video_resize
-import pandas as pd
+import PyPDF2
+from fpdf import FPDF
+import pytesseract
 from PIL import Image
-import io
-import qrcode
-import random
-import string
-from gtts import gTTS
 import os
+import cv2
+import io
+from gtts import gTTS
+import base64
+import tempfile
+import qrcode
+from pdf2docx import Converter
+from pdf2image import convert_from_path
+import fitz  # PyMuPDF
+from reportlab.pdfgen import canvas
 
-# Utility Functions
+# Helper functions for new features
+def merge_pdfs(pdf_list):
+    merger = PyPDF2.PdfMerger()
+    for pdf in pdf_list:
+        merger.append(pdf)
+    output = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+    merger.write(output.name)
+    return output.name
 
-def generate_random_password(length=12):
-    characters = string.ascii_letters + string.digits + string.punctuation
-    return ''.join(random.choice(characters) for _ in range(length))
+def split_pdf(pdf_file, start_page, end_page):
+    with open(pdf_file, "rb") as file:
+        reader = PyPDF2.PdfReader(file)
+        writer = PyPDF2.PdfWriter()
+        for i in range(start_page-1, end_page):
+            writer.add_page(reader.pages[i])
+        output = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+        with open(output.name, "wb") as out_file:
+            writer.write(out_file)
+    return output.name
 
-def create_qr_code(data):
-    qr = qrcode.make(data)
-    buffer = io.BytesIO()
-    qr.save(buffer, format="PNG")
-    buffer.seek(0)
-    return buffer
+def extract_images_from_pdf(pdf_file):
+    images = []
+    pdf_document = fitz.open(pdf_file)
+    for i in range(len(pdf_document)):
+        page = pdf_document.load_page(i)
+        img_list = page.get_images(full=True)
+        for img in img_list:
+            xref = img[0]
+            base_image = pdf_document.extract_image(xref)
+            image_bytes = base_image["image"]
+            image = Image.open(io.BytesIO(image_bytes))
+            img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+            image.save(img_path.name)
+            images.append(img_path.name)
+    return images
 
-def visualize_data(df):
-    st.line_chart(df)
+def add_password_to_pdf(pdf_file, password):
+    pdf_writer = PyPDF2.PdfWriter()
+    with open(pdf_file, "rb") as file:
+        reader = PyPDF2.PdfReader(file)
+        for page in range(len(reader.pages)):
+            pdf_writer.add_page(reader.pages[page])
+        output = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+        with open(output.name, "wb") as out_file:
+            pdf_writer.write(out_file)
+        output.close()
+        output = PyPDF2.PdfWriter()
+        output.append(file)
+        output.encrypt(password)
+        return output
 
-# Streamlit App Layout
-st.title("Enhanced File Type Converters & Media Processing")
+def rotate_pdf(pdf_file, rotation_angle=90):
+    with open(pdf_file, "rb") as file:
+        reader = PyPDF2.PdfReader(file)
+        writer = PyPDF2.PdfWriter()
+        for page in reader.pages:
+            page.rotate_clockwise(rotation_angle)
+            writer.add_page(page)
+        output = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+        with open(output.name, "wb") as out_file:
+            writer.write(out_file)
+    return output.name
 
-# File Type Conversion Section
-st.header("File Type Converters")
+def add_header_footer_to_pdf(pdf_file, header_text, footer_text):
+    with open(pdf_file, "rb") as file:
+        reader = PyPDF2.PdfReader(file)
+        writer = PyPDF2.PdfWriter()
+        for page in reader.pages:
+            writer.add_page(page)
+            # Add header and footer to each page
+            pass  # Implement header and footer customization (text, etc.)
+        output = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+        with open(output.name, "wb") as out_file:
+            writer.write(out_file)
+    return output.name
 
-# PDF to Word Converter
-pdf_file = st.file_uploader("Upload PDF Document for PDF to Word Conversion", type="pdf")
-if pdf_file:
-    if st.button("Convert PDF to Word"):
-        with pdfplumber.open(pdf_file) as pdf:
-            doc = Document()
-            for page in pdf.pages:
-                doc.add_paragraph(page.extract_text())
-            word_file = io.BytesIO()
-            doc.save(word_file)
-            word_file.seek(0)
-            st.download_button("Download Word Document", word_file, file_name="converted_document.docx")
+def pdf_to_html(pdf_file):
+    # Convert PDF to HTML - Basic
+    pass  # Implement conversion to HTML if necessary
 
-# Markdown to HTML Converter
-markdown_content = st.text_area("Enter Markdown Content for Conversion to HTML")
-if st.button("Convert Markdown to HTML"):
-    html_output = markdown(markdown_content)
-    st.write("### HTML Output")
-    st.code(html_output, language="html")
+def text_to_speech(text, lang='en'):
+    tts = gTTS(text=text, lang=lang)
+    audio_file = tempfile.NamedTemporaryFile(delete=False)
+    tts.save(audio_file.name)
+    return audio_file.name
 
-# Image Format Conversion (Improved Bytes-like object handling)
-uploaded_image = st.file_uploader("Upload Image (JPG/PNG) for Format Conversion", type=["jpg", "jpeg", "png"])
-if uploaded_image:
-    img = Image.open(uploaded_image)
-    format_choice = st.selectbox("Convert to Format", options=["PNG", "JPEG"])
-    output_buffer = io.BytesIO()
-    if st.button("Convert Image Format"):
-        img.save(output_buffer, format=format_choice)
-        output_buffer.seek(0)
-        st.image(output_buffer, caption=f"Converted Image in {format_choice} format", use_column_width=True)
+def text_to_pdf(text):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.multi_cell(190, 10, text)
+    pdf_output = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+    pdf.output(pdf_output.name)
+    return pdf_output.name
 
-# Media Processing Section
-st.header("Media Processing Features")
+def image_to_text(image_file):
+    img = cv2.imread(image_file)
+    gray_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    text = pytesseract.image_to_string(gray_image)
+    return text
 
-# Video Resizer
-uploaded_video = st.file_uploader("Upload Video File for Resizing", type=["mp4", "avi"])
-if uploaded_video:
-    video_clip = VideoFileClip(uploaded_video.name)
-    scale_factor = st.slider("Select Resize Scale Factor", min_value=0.1, max_value=1.0, value=0.5)
-    if st.button("Resize Video"):
-        resized_clip = video_clip.fx(video_resize, scale_factor)
-        resized_video_buffer = io.BytesIO()
-        resized_clip.write_videofile(resized_video_buffer)
-        resized_video_buffer.seek(0)
-        st.video(resized_video_buffer, format="video/mp4")
+def generate_qr_code(text):
+    qr = qrcode.make(text)
+    qr_path = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+    qr.save(qr_path.name)
+    return qr_path.name
 
-# QR Code Generator
-qr_data = st.text_input("Enter data for QR Code")
-if st.button("Generate QR Code"):
-    qr_image = create_qr_code(qr_data)
-    st.image(qr_image, caption="QR Code")
-    st.download_button("Download QR Code", qr_image, file_name="qrcode.png")
+# Streamlit UI setup
+st.title("Advanced PDF Tool with Additional Features")
+st.sidebar.title("Navigation")
+option = st.sidebar.radio("Choose an Action", [
+    "Upload PDF", "Upload Image", "Text to PDF", "Text to Speech",
+    "Merge PDFs", "Split PDF", "Extract Images", "PDF to Word", 
+    "PDF to HTML", "Generate QR Code"
+])
 
-# Random Password Generator
-if st.button("Generate Random Password"):
-    password = generate_random_password()
-    st.write(f"Generated Password: {password}")
+# Main functionality
+if option == "Upload PDF":
+    uploaded_pdf = st.file_uploader("Choose a PDF file", type="pdf")
+    if uploaded_pdf:
+        with open("uploaded_file.pdf", "wb") as f:
+            f.write(uploaded_pdf.read())
+        st.write("File Uploaded Successfully!")
 
-# Data Visualization
-data_file = st.file_uploader("Upload CSV for Visualization", type="csv")
-if data_file:
-    df = pd.read_csv(data_file)
-    visualize_data(df)
+elif option == "Text to PDF":
+    text_input = st.text_area("Enter Text for PDF", height=200)
+    if text_input:
+        pdf_file = text_to_pdf(text_input)
+        st.write("Download the PDF")
+        with open(pdf_file, "rb") as f:
+            pdf_data = f.read()
+            b64_pdf = base64.b64encode(pdf_data).decode("utf-8")
+            href = f'<a href="data:application/octet-stream;base64,{b64_pdf}" download="output.pdf">Download PDF</a>'
+            st.markdown(href, unsafe_allow_html=True)
 
-# Speech Conversion (Text-to-Speech)
-text_to_speech_input = st.text_area("Enter Text for Text-to-Speech Conversion")
-if st.button("Convert Text to Speech"):
-    tts = gTTS(text=text_to_speech_input, lang='en')
-    audio_buffer = io.BytesIO()
-    tts.save(audio_buffer)
-    audio_buffer.seek(0)
-    st.audio(audio_buffer, format="audio/mp3")
+elif option == "Merge PDFs":
+    uploaded_pdfs = st.file_uploader("Upload PDFs to Merge", type="pdf", accept_multiple_files=True)
+    if uploaded_pdfs:
+        pdf_list = [file for file in uploaded_pdfs]
+        merged_pdf = merge_pdfs(pdf_list)
+        st.write("Download Merged PDF")
+        with open(merged_pdf, "rb") as f:
+            pdf_data = f.read()
+            b64_pdf = base64.b64encode(pdf_data).decode("utf-8")
+            href = f'<a href="data:application/octet-stream;base64,{b64_pdf}" download="merged_output.pdf">Download Merged PDF</a>'
+            st.markdown(href, unsafe_allow_html=True)
 
-# Clean up temporary files
-temp_files = ["converted_html.pdf", "resized_video.mp4"]
-for temp_file in temp_files:
-    if os.path.exists(temp_file):
-        os.remove(temp_file)
+elif option == "Split PDF":
+    uploaded_pdf = st.file_uploader("Choose a PDF to Split", type="pdf")
+    start_page = st.number_input("Start Page", min_value=1)
+    end_page = st.number_input("End Page", min_value=start_page)
+    if uploaded_pdf:
+        with open("uploaded_file.pdf", "wb") as f:
+            f.write(uploaded_pdf.read())
+        split_pdf_file = split_pdf("uploaded_file.pdf", start_page, end_page)
+        st.write("Download Split PDF")
+        with open(split_pdf_file, "rb") as f:
+            pdf_data = f.read()
+            b64_pdf = base64.b64encode(pdf_data).decode("utf-8")
+            href = f'<a href="data:application/octet-stream;base64,{b64_pdf}" download="split_output.pdf">Download Split PDF</a>'
+            st.markdown(href, unsafe_allow_html=True)
+
+elif option == "Extract Images":
+    uploaded_pdf = st.file_uploader("Upload PDF to Extract Images", type="pdf")
+    if uploaded_pdf:
+        with open("uploaded_file.pdf", "wb") as f:
+            f.write(uploaded_pdf.read())
+        images = extract_images_from_pdf("uploaded_file.pdf")
+        for img in images:
+            st.image(img)
+
+elif option == "Generate QR Code":
+    text_input = st.text_area("Enter Text for QR Code", height=100)
+    if text_input:
+        qr_code_path = generate_qr_code(text_input)
+        st.image(qr_code_path)
+
+elif option == "Text to Speech":
+    text_input = st.text_area("Enter Text for Speech", height=200)
+    if text_input:
+        audio_file = text_to_speech(text_input)
+        st.audio(audio_file)
+
