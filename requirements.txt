@@ -7,3 +7,4 @@ pytesseract
 opencv-python
 pdfplumber
 pdfkit
+markdown
