@@ -11,3 +11,4 @@ markdown
 docx
 exceptions
 exceptions
+opencv-python-headless
