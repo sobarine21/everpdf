@@ -10,6 +10,4 @@ Pillow
 opencv-python-headless
 qrcode
 moviepy
-base64
-tempfile
 requests
