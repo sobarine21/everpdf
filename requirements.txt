@@ -3,10 +3,5 @@ PyPDF2
 gTTS
 reportlab
 Pillow
-opencv-python
 pytesseract
-pdfplumber
-pdfkit
-markdown
-docx
-exceptions
+opencv-python
