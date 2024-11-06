@@ -22,7 +22,7 @@ uploaded_file = st.file_uploader("Upload a PDF file", type="pdf")
 
 if uploaded_file:
     # Save uploaded file temporarily
-    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
         temp_file.write(uploaded_file.read())
         temp_pdf_path = temp_file.name
 
@@ -159,16 +159,16 @@ if uploaded_file:
             pdf = reload_pdf()
             writer = PdfWriter()
             for page in pdf.pages:
-                page.rotate_clockwise(rotation_angle)
+                page.rotate(rotation_angle)
                 writer.add_page(page)
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as rotated_pdf:
                 writer.write(rotated_pdf)
                 st.download_button("Download Rotated PDF", rotated_pdf.name)
 
-    # 14. Encrypt PDF with Password
+    # 14. Encrypt PDF with a Password
     if st.sidebar.checkbox("Encrypt PDF"):
-        password = st.text_input("Enter a password", type="password")
-        if st.button("Encrypt PDF"):
+        password = st.text_input("Enter password", type="password")
+        if password and st.button("Encrypt PDF"):
             pdf = reload_pdf()
             writer = PdfWriter()
             for page in pdf.pages:
@@ -178,18 +178,15 @@ if uploaded_file:
                 writer.write(encrypted_pdf)
                 st.download_button("Download Encrypted PDF", encrypted_pdf.name)
 
-    # 15. Decrypt PDF
+    # 15. Decrypt Password-Protected PDF
     if st.sidebar.checkbox("Decrypt PDF"):
-        password = st.text_input("Enter the password for decryption", type="password")
-        if st.button("Decrypt PDF"):
-            pdf = PdfReader(temp_pdf_path, password=password)
+        password = st.text_input("Enter password for decryption", type="password")
+        if password and st.button("Decrypt PDF"):
+            pdf = reload_pdf()
+            pdf.decrypt(password)
             writer = PdfWriter()
             for page in pdf.pages:
                 writer.add_page(page)
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as decrypted_pdf:
                 writer.write(decrypted_pdf)
                 st.download_button("Download Decrypted PDF", decrypted_pdf.name)
-
-# Inform the user to upload a file if nothing is uploaded yet
-else:
-    st.write("Please upload a PDF file to start using the tool.")
