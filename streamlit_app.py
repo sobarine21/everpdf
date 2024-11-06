@@ -13,11 +13,11 @@ import tempfile
 import os
 import requests
 
-# 1. Set up the Streamlit application with a title and description
+# Set up the Streamlit application with a title and description
 st.title("PDF Utility Tool: A Comprehensive Application")
 st.write("Upload a PDF to perform various actions such as text extraction, image conversion, merging, splitting, and more.")
 
-# 2. File uploader to allow PDF input
+# File uploader to allow PDF input
 uploaded_file = st.file_uploader("Upload a PDF file", type="pdf")
 
 if uploaded_file:
@@ -33,7 +33,7 @@ if uploaded_file:
     # Sidebar with tool options
     st.sidebar.title("PDF Tools")
 
-    # 3. Extract and display text from the PDF
+    # 1. Extract and display text from the PDF
     if st.sidebar.checkbox("Extract PDF Text"):
         pdf = reload_pdf()
         extracted_text = ""
@@ -41,7 +41,7 @@ if uploaded_file:
             extracted_text += page.extract_text() or ""
         st.text_area("Extracted Text", extracted_text, height=300)
 
-    # 4. Show PDF Metadata
+    # 2. Show PDF Metadata
     if st.sidebar.checkbox("Show PDF Metadata"):
         pdf = reload_pdf()
         metadata = pdf.metadata
@@ -49,19 +49,19 @@ if uploaded_file:
         for key, value in metadata.items():
             st.write(f"{key}: {value}")
 
-    # 5. Display total number of pages
+    # 3. Display total number of pages
     if st.sidebar.checkbox("Display PDF Page Count"):
         pdf = reload_pdf()
         st.write(f"Total Pages: {len(pdf.pages)}")
 
-    # 6. Extract images from each PDF page and display them
+    # 4. Extract images from each PDF page and display them
     if st.sidebar.checkbox("Extract Images from PDF"):
         images = convert_from_path(temp_pdf_path)
         st.write(f"Extracted {len(images)} images from PDF:")
         for i, img in enumerate(images):
             st.image(img, caption=f"Page {i+1}")
 
-    # 7. Merge PDFs
+    # 5. Merge PDFs
     if st.sidebar.checkbox("Merge PDFs"):
         additional_files = st.file_uploader("Upload additional PDFs to merge", type="pdf", accept_multiple_files=True)
         if st.button("Merge PDFs"):
@@ -75,7 +75,7 @@ if uploaded_file:
                 writer.write(merged_pdf)
                 st.download_button("Download Merged PDF", merged_pdf.name)
 
-    # 8. Split PDF by selecting start and end pages
+    # 6. Split PDF by selecting start and end pages
     if st.sidebar.checkbox("Split PDF"):
         start_page = st.number_input("Start Page", min_value=1, max_value=len(reload_pdf().pages), value=1)
         end_page = st.number_input("End Page", min_value=start_page, max_value=len(reload_pdf().pages), value=len(reload_pdf().pages))
@@ -88,7 +88,7 @@ if uploaded_file:
                 writer.write(split_pdf)
                 st.download_button("Download Split PDF", split_pdf.name)
 
-    # 9. Convert PDF to Audio
+    # 7. Convert PDF to Audio
     if st.sidebar.checkbox("Convert PDF to Audio"):
         pdf = reload_pdf()
         text = "".join(page.extract_text() for page in pdf.pages)
@@ -97,7 +97,7 @@ if uploaded_file:
         tts.save(audio_file.name)
         st.audio(audio_file.name, format="audio/mp3")
 
-    # 10. Convert PDF Pages to Images
+    # 8. Convert PDF Pages to Images
     if st.sidebar.checkbox("Convert PDF to Images"):
         images = convert_from_path(temp_pdf_path)
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -110,7 +110,7 @@ if uploaded_file:
             # Provide ZIP download option
             st.write("Download all images as ZIP not implemented yet.")
 
-    # 11. Add a Watermark to the PDF
+    # 9. Add a Watermark to the PDF
     if st.sidebar.checkbox("Add Watermark to PDF"):
         watermark_text = st.text_input("Enter Watermark Text")
         if watermark_text and st.button("Apply Watermark"):
@@ -125,14 +125,14 @@ if uploaded_file:
                 c.save()
                 st.download_button("Download Watermarked PDF", watermarked_pdf.name)
 
-    # 12. Generate QR Code for any text or URL
+    # 10. Generate QR Code for any text or URL
     if st.sidebar.checkbox("Generate QR Code"):
         qr_text = st.text_input("Enter text for QR Code")
         if st.button("Generate QR Code"):
             qr_img = qrcode.make(qr_text)
             st.image(qr_img, caption="Generated QR Code")
 
-    # 13. Perform OCR on Images within the PDF
+    # 11. Perform OCR on Images within the PDF
     if st.sidebar.checkbox("Perform OCR on PDF Images"):
         images = convert_from_path(temp_pdf_path)
         extracted_text = ""
@@ -140,7 +140,7 @@ if uploaded_file:
             extracted_text += pytesseract.image_to_string(img)
         st.text_area("Extracted OCR Text", extracted_text)
 
-    # 14. Generate a PDF from Input Text
+    # 12. Generate a PDF from Input Text
     if st.sidebar.checkbox("Generate PDF from Text"):
         text_input = st.text_area("Enter text to generate PDF")
         if st.button("Generate PDF"):
@@ -152,7 +152,7 @@ if uploaded_file:
                 pdf.output(generated_pdf.name)
                 st.download_button("Download Generated PDF", generated_pdf.name)
 
-    # 15. Rotate PDF Pages
+    # 13. Rotate PDF Pages
     if st.sidebar.checkbox("Rotate PDF Pages"):
         rotation_angle = st.selectbox("Select Rotation Angle", [90, 180, 270])
         if st.button("Rotate PDF"):
@@ -165,7 +165,7 @@ if uploaded_file:
                 writer.write(rotated_pdf)
                 st.download_button("Download Rotated PDF", rotated_pdf.name)
 
-    # 16. Encrypt PDF with Password
+    # 14. Encrypt PDF with Password
     if st.sidebar.checkbox("Encrypt PDF"):
         password = st.text_input("Enter a password", type="password")
         if st.button("Encrypt PDF"):
@@ -178,7 +178,7 @@ if uploaded_file:
                 writer.write(encrypted_pdf)
                 st.download_button("Download Encrypted PDF", encrypted_pdf.name)
 
-    # 17. Decrypt PDF
+    # 15. Decrypt PDF
     if st.sidebar.checkbox("Decrypt PDF"):
         password = st.text_input("Enter the password for decryption", type="password")
         if st.button("Decrypt PDF"):
