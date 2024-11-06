@@ -1,13 +1,15 @@
+streamlit
 PyPDF2
 PyMuPDF
 pdf2image
 reportlab
 fpdf
-streamlit
 pytesseract
 gTTS
 Pillow
 opencv-python-headless
 qrcode
 moviepy
+base64
+tempfile
 requests
