@@ -12,8 +12,7 @@ import qrcode
 import random
 import string
 from gtts import gTTS
-from pydub import AudioSegment
-import os  # Import the os module
+import os
 
 # Utility Functions
 
@@ -49,14 +48,6 @@ if pdf_file:
             doc.save(word_file)
             word_file.seek(0)
             st.download_button("Download Word Document", word_file, file_name="converted_document.docx")
-
-# HTML to PDF Converter
-html_content = st.text_area("Enter HTML Content for Conversion to PDF")
-if st.button("Convert HTML to PDF"):
-    pdf_file = "converted_html.pdf"
-    pdfkit.from_string(html_content, pdf_file)
-    with open(pdf_file, "rb") as file:
-        st.download_button("Download PDF", file, file_name="converted_html.pdf")
 
 # Markdown to HTML Converter
 markdown_content = st.text_area("Enter Markdown Content for Conversion to HTML")
