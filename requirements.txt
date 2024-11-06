@@ -1,14 +1,37 @@
-streamlit
-PyPDF2
-gTTS
-reportlab
-Pillow
-pytesseract
-opencv-python
-pdfplumber
-pdfkit
-markdown
-docx
-exceptions
-exceptions
-opencv-python-headless
+# Streamlit - Main framework for the app
+streamlit==1.20.0
+
+# PDF processing
+PyPDF2==2.12.1
+PyMuPDF==1.22.0
+pdf2image==1.16.3
+reportlab==3.6.7
+fpdf==1.7.2
+
+# OCR (Optical Character Recognition)
+pytesseract==0.3.10
+
+# Text to Speech
+gTTS==2.3.0
+
+# Image processing
+Pillow==9.5.0
+opencv-python-headless==4.7.0.72
+
+# QR Code generation
+qrcode==7.3.1
+
+# For working with video and other multimedia
+moviepy==1.0.3
+
+# For base64 encoding and decoding (often used for image or media content)
+base64==0.2.1
+
+# For temporary file handling
+tempfile==1.0
+
+# For system-level processing
+os==0.1.4
+
+# Additional libraries (if needed in the future)
+requests==2.31.0
