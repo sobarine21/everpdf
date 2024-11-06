@@ -1,56 +1,93 @@
 import streamlit as st
 from PyPDF2 import PdfReader
-from PIL import Image
 import pytesseract
 from gtts import gTTS
-import os
+from PIL import Image
 import tempfile
-import cv2
-import moviepy.editor as mp
 import pdf2image
 import qrcode
-import requests
-from reportlab.pdfgen import canvas
+import moviepy.editor as mp
+import os
 from fpdf import FPDF
+import cv2
+import requests
+from io import BytesIO
 
 # Function to process PDF and extract text
 def extract_pdf_text(uploaded_file):
-    pdf_reader = PdfReader(uploaded_file)
-    text = ""
-    for page_num in range(len(pdf_reader.pages)):
-        page = pdf_reader.pages[page_num]
-        text += page.extract_text()
-    return text
+    try:
+        pdf_reader = PdfReader(uploaded_file)
+        text = ""
+        for page_num in range(len(pdf_reader.pages)):
+            page = pdf_reader.pages[page_num]
+            text += page.extract_text()
+        return text
+    except Exception as e:
+        st.error(f"Error extracting PDF text: {e}")
+        return None
 
 # Function for OCR (Optical Character Recognition) on an image
 def ocr_image(image):
-    text = pytesseract.image_to_string(image)
-    return text
+    try:
+        text = pytesseract.image_to_string(image)
+        return text
+    except Exception as e:
+        st.error(f"Error performing OCR: {e}")
+        return None
 
 # Function to create a text-to-speech MP3 file
 def text_to_speech(text):
-    tts = gTTS(text)
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-    tts.save(temp_file.name)
-    return temp_file.name
+    try:
+        tts = gTTS(text)
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+        tts.save(temp_file.name)
+        return temp_file.name
+    except Exception as e:
+        st.error(f"Error converting text to speech: {e}")
+        return None
 
 # Function to convert a PDF to images
 def convert_pdf_to_images(uploaded_file):
-    images = pdf2image.convert_from_bytes(uploaded_file.read())
-    return images
+    try:
+        images = pdf2image.convert_from_bytes(uploaded_file.read())
+        return images
+    except Exception as e:
+        st.error(f"Error converting PDF to images: {e}")
+        return None
 
 # Function to generate a QR code from text
 def generate_qrcode(data):
-    img = qrcode.make(data)
-    return img
+    try:
+        img = qrcode.make(data)
+        return img
+    except Exception as e:
+        st.error(f"Error generating QR code: {e}")
+        return None
 
 # Function to resize a video (Example of video processing)
 def resize_video(uploaded_video):
-    video = mp.VideoFileClip(uploaded_video)
-    resized_video = video.resize(height=360)
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
-    resized_video.write_videofile(temp_file.name)
-    return temp_file.name
+    try:
+        video = mp.VideoFileClip(uploaded_video)
+        resized_video = video.resize(height=360)
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+        resized_video.write_videofile(temp_file.name)
+        return temp_file.name
+    except Exception as e:
+        st.error(f"Error resizing video: {e}")
+        return None
+
+# Function to download a file from the URL
+def download_file_from_url(url):
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            return BytesIO(response.content)
+        else:
+            st.error(f"Failed to download file from URL: {url}")
+            return None
+    except Exception as e:
+        st.error(f"Error downloading file: {e}")
+        return None
 
 # Main Streamlit app
 def main():
@@ -60,24 +97,24 @@ def main():
     uploaded_file = st.file_uploader("Upload a file", type=["pdf", "png", "jpg", "jpeg", "mp4", "avi"])
 
     if uploaded_file is not None:
-        # Display file name
-        st.write(f"Uploaded file: {uploaded_file.name}")
-
         file_name = uploaded_file.name
+        st.write(f"Uploaded file: {file_name}")
 
-        # Check if the uploaded file is a PDF
+        # PDF Processing
         if file_name.endswith(".pdf"):
             st.write("Processing PDF...")
             text = extract_pdf_text(uploaded_file)
-            st.text_area("Extracted Text", text)
+            if text:
+                st.text_area("Extracted Text", text)
 
             # Convert PDF to images
             if st.button("Convert PDF to Images"):
                 images = convert_pdf_to_images(uploaded_file)
-                for i, img in enumerate(images):
-                    st.image(img, caption=f"Page {i + 1}", use_column_width=True)
+                if images:
+                    for i, img in enumerate(images):
+                        st.image(img, caption=f"Page {i + 1}", use_column_width=True)
 
-        # Check if the uploaded file is an image
+        # Image Processing
         elif file_name.endswith((".png", ".jpg", ".jpeg")):
             st.write("Processing Image...")
             img = Image.open(uploaded_file)
@@ -86,34 +123,37 @@ def main():
             # Perform OCR
             if st.button("Extract Text from Image"):
                 extracted_text = ocr_image(img)
-                st.text_area("Extracted Text", extracted_text)
+                if extracted_text:
+                    st.text_area("Extracted Text", extracted_text)
 
             # Generate QR Code
             if st.button("Generate QR Code"):
                 qr_img = generate_qrcode(extracted_text)
-                st.image(qr_img, caption="Generated QR Code", use_column_width=True)
+                if qr_img:
+                    st.image(qr_img, caption="Generated QR Code", use_column_width=True)
 
-        # Check if the uploaded file is a video
+        # Video Processing
         elif file_name.endswith((".mp4", ".avi")):
             st.write("Processing Video...")
-            video_file = uploaded_file
             temp_video_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
             with open(temp_video_path.name, "wb") as f:
-                f.write(video_file.read())
+                f.write(uploaded_file.read())
 
             # Resize Video
             if st.button("Resize Video"):
                 resized_video_path = resize_video(temp_video_path.name)
-                st.video(resized_video_path)
+                if resized_video_path:
+                    st.video(resized_video_path)
 
         # Text-to-Speech (For text content or extracted text from PDF/Image)
         if st.button("Convert Text to Speech"):
             text = st.text_area("Enter text or extracted text", "")
             if text:
                 audio_file = text_to_speech(text)
-                st.audio(audio_file, format="audio/mp3")
+                if audio_file:
+                    st.audio(audio_file, format="audio/mp3")
 
-        # Save generated PDF
+        # Save and Download PDF with QR Code
         if st.button("Save PDF with QR Code"):
             pdf = FPDF()
             pdf.add_page()
