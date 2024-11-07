@@ -1,5 +1,4 @@
 import streamlit as st
-import tabula
 import PyPDF2
 from PyPDF2 import PdfReader, PdfWriter
 from fpdf import FPDF
@@ -13,6 +12,7 @@ import tempfile
 import io
 import os
 import requests
+import camelot
 
 # Set up the Streamlit application with a title and description
 st.title("PDF Utility Tool: A Comprehensive Application")
@@ -147,11 +147,11 @@ if uploaded_file:
             extracted_text += pytesseract.image_to_string(img)
         st.text_area("Extracted OCR Text", extracted_text)
 
-    # 12. Convert PDF Tables to CSV using Tabula
+    # 12. Convert PDF Tables to CSV using Camelot
     if st.sidebar.checkbox("Convert PDF Tables to CSV"):
         try:
-            # Read tables from the PDF
-            tables = tabula.read_pdf(temp_pdf_path, pages='all', multiple_tables=True)
+            # Read tables from the PDF using Camelot
+            tables = camelot.read_pdf(temp_pdf_path, pages='all', flavor='stream')
 
             # For each table, convert it to CSV and provide a download button
             for i, table in enumerate(tables):
