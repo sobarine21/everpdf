@@ -1,6 +1,5 @@
 import streamlit as st
 import tabula
-import tempfile
 import PyPDF2
 from PyPDF2 import PdfReader, PdfWriter
 from fpdf import FPDF
@@ -10,6 +9,7 @@ from reportlab.pdfgen import canvas
 from gtts import gTTS
 import pytesseract
 import qrcode
+import tempfile
 import io
 import os
 import requests
@@ -150,8 +150,10 @@ if uploaded_file:
     # 12. Convert PDF Tables to CSV using Tabula
     if st.sidebar.checkbox("Convert PDF Tables to CSV"):
         try:
+            # Read tables from the PDF
             tables = tabula.read_pdf(temp_pdf_path, pages='all', multiple_tables=True)
-            
+
+            # For each table, convert it to CSV and provide a download button
             for i, table in enumerate(tables):
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as csv_file:
                     table.to_csv(csv_file.name, index=False)
