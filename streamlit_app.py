@@ -1,4 +1,6 @@
 import streamlit as st
+import tabula
+import tempfile
 import PyPDF2
 from PyPDF2 import PdfReader, PdfWriter
 from fpdf import FPDF
@@ -6,14 +8,11 @@ import fitz  # PyMuPDF
 from pdf2image import convert_from_path
 from reportlab.pdfgen import canvas
 from gtts import gTTS
-from PIL import Image
 import pytesseract
 import qrcode
-import tempfile
 import io
 import os
 import requests
-import tabula
 
 # Set up the Streamlit application with a title and description
 st.title("PDF Utility Tool: A Comprehensive Application")
@@ -148,7 +147,20 @@ if uploaded_file:
             extracted_text += pytesseract.image_to_string(img)
         st.text_area("Extracted OCR Text", extracted_text)
 
-    # 12. Generate a PDF from Input Text
+    # 12. Convert PDF Tables to CSV using Tabula
+    if st.sidebar.checkbox("Convert PDF Tables to CSV"):
+        try:
+            tables = tabula.read_pdf(temp_pdf_path, pages='all', multiple_tables=True)
+            
+            for i, table in enumerate(tables):
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as csv_file:
+                    table.to_csv(csv_file.name, index=False)
+                    st.download_button(f"Download Table {i+1} as CSV", csv_file.name)
+
+        except Exception as e:
+            st.error(f"Error converting PDF to CSV: {str(e)}")
+
+    # 13. Generate PDF from Input Text
     if st.sidebar.checkbox("Generate PDF from Text"):
         text_input = st.text_area("Enter text to generate PDF")
         if st.button("Generate PDF"):
@@ -160,7 +172,7 @@ if uploaded_file:
                 pdf.output(generated_pdf.name)
                 st.download_button("Download Generated PDF", generated_pdf.name)
 
-    # 13. Rotate PDF Pages
+    # 14. Rotate PDF Pages
     if st.sidebar.checkbox("Rotate PDF Pages"):
         rotation_angle = st.selectbox("Select Rotation Angle", [90, 180, 270])
         if st.button("Rotate PDF"):
@@ -173,7 +185,7 @@ if uploaded_file:
                 writer.write(rotated_pdf)
                 st.download_button("Download Rotated PDF", rotated_pdf.name)
 
-    # 14. Encrypt PDF with a Password
+    # 15. Encrypt PDF with a Password
     if st.sidebar.checkbox("Encrypt PDF"):
         password = st.text_input("Enter password", type="password")
         if password and st.button("Encrypt PDF"):
@@ -186,7 +198,7 @@ if uploaded_file:
                 writer.write(encrypted_pdf)
                 st.download_button("Download Encrypted PDF", encrypted_pdf.name)
 
-    # 15. Decrypt Password-Protected PDF
+    # 16. Decrypt Password-Protected PDF
     if st.sidebar.checkbox("Decrypt PDF"):
         password = st.text_input("Enter password for decryption", type="password")
         if password and st.button("Decrypt PDF"):
@@ -198,17 +210,3 @@ if uploaded_file:
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as decrypted_pdf:
                 writer.write(decrypted_pdf)
                 st.download_button("Download Decrypted PDF", decrypted_pdf.name)
-
-    # 16. Convert PDF Tables to CSV (Tabula integration)
-    if st.sidebar.checkbox("Convert PDF Tables to CSV"):
-        try:
-            # Read tables from PDF into a list of DataFrames
-            tables = tabula.read_pdf(temp_pdf_path, pages='all', multiple_tables=True)
-            
-            # Iterate through each table and provide download options for CSV
-            for i, table in enumerate(tables):
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as csv_file:
-                    table.to_csv(csv_file.name, index=False)
-                    st.download_button(f"Download Table {i+1} as CSV", csv_file.name)
-        except Exception as e:
-            st.error(f"Error converting PDF to CSV: {str(e)}")
