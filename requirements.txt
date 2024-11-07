@@ -11,3 +11,4 @@ opencv-python-headless
 qrcode
 moviepy
 requests
+tabula
