@@ -13,7 +13,6 @@ import tempfile
 import io
 import os
 import requests
-import csv
 import tabula
 
 # Set up the Streamlit application with a title and description
@@ -200,27 +199,16 @@ if uploaded_file:
                 writer.write(decrypted_pdf)
                 st.download_button("Download Decrypted PDF", decrypted_pdf.name)
 
-    # 16. Extract Hyperlinks from PDF
-    if st.sidebar.checkbox("Extract Hyperlinks from PDF"):
-        pdf = reload_pdf()
-        hyperlinks = []
-        for page_num, page in enumerate(pdf.pages):
-            page_text = page.extract_text() or ""
-            # Use PyMuPDF (fitz) to extract hyperlinks
-            doc = fitz.open(temp_pdf_path)
-            links = doc.load_page(page_num).get_links()
-            for link in links:
-                hyperlinks.append(link.get('uri'))
-        st.write(f"Extracted hyperlinks: {', '.join(hyperlinks)}")
-
-    # 17. Convert PDF Tables to CSV
+    # 16. Convert PDF Tables to CSV (Tabula integration)
     if st.sidebar.checkbox("Convert PDF Tables to CSV"):
         try:
+            # Read tables from PDF into a list of DataFrames
             tables = tabula.read_pdf(temp_pdf_path, pages='all', multiple_tables=True)
+            
+            # Iterate through each table and provide download options for CSV
             for i, table in enumerate(tables):
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as csv_file:
                     table.to_csv(csv_file.name, index=False)
                     st.download_button(f"Download Table {i+1} as CSV", csv_file.name)
         except Exception as e:
             st.error(f"Error converting PDF to CSV: {str(e)}")
-
