@@ -211,4 +211,4 @@ if uploaded_file:
                 writer.add_page(page)
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as decrypted_pdf:
                 writer.write(decrypted_pdf)
-                st.download_button("Download Decrypted PDF", decrypted_pdf.name)
+                st.download_button("Download Decrypted PDF", decrypted_pdf.name) 
