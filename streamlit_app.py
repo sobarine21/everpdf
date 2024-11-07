@@ -10,6 +10,7 @@ from PIL import Image
 import pytesseract
 import qrcode
 import tempfile
+import io
 import os
 import requests
 
@@ -59,7 +60,10 @@ if uploaded_file:
         images = convert_from_path(temp_pdf_path)
         st.write(f"Extracted {len(images)} images from PDF:")
         for i, img in enumerate(images):
-            st.image(img, caption=f"Page {i+1}")
+            # Convert image to bytes for display or download
+            img_buffer = io.BytesIO()
+            img.save(img_buffer, format="PNG")
+            st.image(img_buffer, caption=f"Page {i+1}")
 
     # 5. Merge PDFs
     if st.sidebar.checkbox("Merge PDFs"):
@@ -130,7 +134,10 @@ if uploaded_file:
         qr_text = st.text_input("Enter text for QR Code")
         if st.button("Generate QR Code"):
             qr_img = qrcode.make(qr_text)
-            st.image(qr_img, caption="Generated QR Code")
+            # Convert QR image to bytes for display
+            qr_buffer = io.BytesIO()
+            qr_img.save(qr_buffer, format="PNG")
+            st.image(qr_buffer, caption="Generated QR Code")
 
     # 11. Perform OCR on Images within the PDF
     if st.sidebar.checkbox("Perform OCR on PDF Images"):
